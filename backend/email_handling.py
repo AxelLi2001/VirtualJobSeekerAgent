@@ -135,7 +135,19 @@ async def register_gmail_server_with_token(aurite):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         mcp_server_path = os.path.join(current_dir, "..", "multi-user_gmail-mcp-server", "gmail_mcp_server.py")
         mcp_server_path = os.path.abspath(mcp_server_path)
-        
+
+        # 读取并记录环境变量
+        creds_env = os.getenv("GMAIL_MCP_CREDS_PATH", "")
+        logger.info(f"[register_gmail_server_with_token] Using MCP server path: {mcp_server_path}")
+        logger.info(f"[register_gmail_server_with_token] GMAIL_MCP_CREDS_PATH: {creds_env}")
+        logger.info(f"[register_gmail_server_with_token] Python executable: {os.sys.executable}")
+
+        # 检查目标文件是否存在
+        if not os.path.isfile(mcp_server_path):
+            logger.error(f"[register_gmail_server_with_token] MCP server file does not exist: {mcp_server_path}")
+        if not creds_env or not os.path.isfile(creds_env):
+            logger.error(f"[register_gmail_server_with_token] Credentials file does not exist or not set: {creds_env}")
+
         # 创建并注册Gmail MCP服务器配置
         gmail_config = {
             "name": "gmail_server_with_token",
@@ -143,22 +155,25 @@ async def register_gmail_server_with_token(aurite):
             "args": [
                 mcp_server_path,
                 "--creds-file-path",
-                os.getenv("GMAIL_MCP_CREDS_PATH", "")  # 从.env读取路径
+                creds_env
             ],
             "capabilities": ["tools"],
             "timeout": 30.0,  # 增加超时时间
         }
-        
+
+        logger.info(f"[register_gmail_server_with_token] Launch command: python {mcp_server_path} --creds-file-path {creds_env}")
+        logger.info(f"[register_gmail_server_with_token] gmail_config: {gmail_config}")
+
         # 创建ClientConfig对象
         from aurite import ClientConfig
         client_config = ClientConfig(**gmail_config)
-        
+
         # 注册客户端
         await aurite.register_client(client_config)
         logger.info(f"Successfully registered Gmail MCP server with token support at: {mcp_server_path}")
-        
+
         return client_config.name
-        
+
     except Exception as e:
         logger.error(f"Failed to register Gmail server with token: {e}", exc_info=True)
         return None
